@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Texas RV Market Intelligence</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('texas-rv-theme')==='dark'?'dark':'light'}catch(_){document.documentElement.dataset.theme='light'}</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 <style>
 :root{--navy:#10243e;--blue:#2563eb;--green:#059669;--amber:#d97706;--red:#dc2626;--purple:#7c3aed;--ink:#172033;--muted:#64748b;--line:#dbe2ea;--bg:#f5f7fb}
@@ -22,9 +23,14 @@ header{background:var(--navy);color:#fff;padding:15px 18px}h1{font-size:20px;mar
 </head>
 <body>
 <header>
-  <div class="eyebrow">Texas property intelligence</div>
-  <h1>Texas RV Market Intelligence</h1>
-  <p>Explore nearby development, demand drivers, and park sales in one place.</p>
+  <div class="header-top">
+    <div class="header-intro">
+      <div class="eyebrow">Texas property intelligence</div>
+      <h1>Texas RV Market Intelligence</h1>
+      <p>Explore nearby development, demand drivers, and park sales in one place.</p>
+    </div>
+    <button id="themeToggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Turn on dark mode"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Dark mode</span></button>
+  </div>
   <div class="tabs" role="group" aria-label="Map layers">
     <button id="devTab" class="tab on" type="button" aria-pressed="true"><span class="check" aria-hidden="true"></span>RV / Mobile Home Developments</button>
     <button id="impactTab" class="tab" type="button" aria-pressed="false"><span class="check" aria-hidden="true"></span>RV Market Impacts</button>
@@ -68,6 +74,7 @@ const map=L.map('map',{minZoom:5}).fitBounds(TX);
 const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
 L.control.layers({'Street / buildings':street,'Satellite':sat}).addTo(map);
+map.on('baselayerchange',e=>{document.documentElement.dataset.basemap=e.name==='Satellite'?'satellite':'street'});
 function miles(a,b,c,d){const R=3958.8,p=Math.PI/180,x=(c-a)*p,y=(d-b)*p,q=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(q))}
 function parseCoords(q){let s=q.trim().replace(/[−–—]/g,'-').replace(/[()]/g,'');let p=s.includes(',')?s.split(',').map(x=>x.trim()):s.split(/\s+/).filter(Boolean);if(p.length!==2)return null;let a=Number(p[0]),b=Number(p[1]);if(!Number.isFinite(a)||!Number.isFinite(b))return null;if(Math.abs(a)>90&&Math.abs(b)<=90)[a,b]=[b,a];if(Math.abs(a)>90||Math.abs(b)>180)return null;return{lat:a,lng:b,label:`Coordinates: ${a.toFixed(6)}, ${b.toFixed(6)}`}}
 async function locate(q){const direct=parseCoords(q);if(direct)return direct;const queries=[q];if(!/\b(tx|texas)\b/i.test(q))queries.push(q+', Texas');for(const z of queries){const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=us&limit=10&addressdetails=1&q='+encodeURIComponent(z));if(!r.ok)continue;const a=await r.json();const h=a.find(x=>Number(x.lat)>=25.5&&Number(x.lat)<=36.7&&Number(x.lon)>=-106.8&&Number(x.lon)<=-93.3)||a[0];if(h)return{lat:Number(h.lat),lng:Number(h.lon),label:h.display_name}}throw new Error('Address or coordinates not found')}
@@ -111,6 +118,9 @@ async function loadData(){els.retryData.disabled=true;const outcomes=await Promi
 els.retryData.addEventListener('click',loadData);
 loadData();
 })();
+</script>
+<script>
+(()=>{const button=document.getElementById('themeToggle'),label=document.getElementById('themeLabel'),icon=document.getElementById('themeIcon');function update(){const dark=document.documentElement.dataset.theme==='dark';button.setAttribute('aria-pressed',String(dark));button.setAttribute('aria-label',dark?'Turn off dark mode':'Turn on dark mode');label.textContent=dark?'Light mode':'Dark mode';icon.textContent=dark?'☀':'☾'}button.addEventListener('click',()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;try{localStorage.setItem('texas-rv-theme',next)}catch(_){}update()});update()})();
 </script>
 </body>
 </html>
