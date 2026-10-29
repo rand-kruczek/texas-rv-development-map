@@ -1,0 +1,25 @@
+import {readFile} from 'node:fs/promises';
+import {Script,createContext} from 'node:vm';
+import assert from 'node:assert/strict';
+const context=createContext({URL,Date,Set,Number,Error});
+new Script(await readFile(new URL('../data-utils.js',import.meta.url),'utf8')).runInContext(context);
+const m=context.MarketData,now=new Date(2026,9,29,12);
+for(const p of [{latitude:null,longitude:null},{latitude:'',longitude:''},{latitude:0,longitude:0},{latitude:30,longitude:null},{latitude:NaN,longitude:-97}])assert.equal(m.hasCoordinates(p),false);
+assert.equal(m.hasCoordinates({latitude:'30.2',longitude:'-97.7'}),true);
+assert.equal(m.normalize([{latitude:null,longitude:null}])[0].latitude,null);
+assert.equal(m.compMatches({record_type:'Sold',sale_date:'2025-04-29',sale_price:10},'Sold',now),true);
+assert.equal(m.compMatches({record_type:'Sold',sale_date:'2025-04-28',sale_price:10},'Sold',now),false);
+assert.equal(m.compMatches({record_type:'Sold',sale_date:'2026-10-30',sale_price:10},'Sold',now),false);
+assert.equal(m.compMatches({record_type:'Sold',sale_date:'2026-10-28',sale_price:null},'Sold',now),false);
+for(const listing_status of ['Sold / Off Market — sale price not publicly supported','Withdrawn','Closed']){const p={record_type:'For Sale',listing_status};assert.equal(m.compMatches(p,'For Sale',now),false);assert.equal(m.compMatches(p,'archive',now),true)}
+assert.equal(m.compMatches({record_type:'For Sale',listing_status:'Under Contract'},'For Sale',now),true);
+assert.equal(m.cutoffDate(new Date(2026,7,31)).getDate(),28);
+let requested=[];const rows=Array.from({length:7},(_,i)=>({id:String(i),latitude:null,longitude:null}));
+const fetcher=async u=>{const p=new URL(u).searchParams;const offset=Number(p.get('offset'));requested.push(offset);return {ok:true,headers:{get:()=>offset+'-'+(Math.min(offset+2,7)-1)+'/7'},json:async()=>rows.slice(offset,offset+2)}};
+const all=await m.fetchAll(fetcher,'https://example.test/records?order=name.asc',{},5);
+assert.equal(all.length,7);assert.deepEqual(requested,[0,2,4,6]);
+await assert.rejects(m.fetchAll(async()=>({ok:false,status:403}),'https://example.test',{}),/403/);
+await assert.rejects(m.fetchAll(async()=>({ok:true,headers:{get:()=>null},json:async()=>[{id:'x'}]}),'https://example.test',{}),/Repeated/);
+let calls=0;await assert.rejects(m.fetchAll(async()=>({ok:true,headers:{get:()=>calls++?'2-3/8':'0-1/7'},json:async()=>[{id:String(calls*2)},{id:String(calls*2+1)}]}),'https://example.test',{}),/Dataset changed/);
+await assert.rejects(m.fetchAll(async()=>({ok:true,headers:{get:()=> '*/7'},json:async()=>[]}), 'https://example.test',{}),/Incomplete/);
+console.log('PASS coordinate safety, 18-month boundaries, off-market archive, short-page pagination, duplicate-page/count/error handling');

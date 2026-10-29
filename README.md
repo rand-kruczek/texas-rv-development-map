@@ -23,3 +23,7 @@ Deploy this repository to the existing Vercel project `texas-rv-development-map`
 - Export currently visible records as CSV and copy a shareable link to the current view.
 - Independent layer loading: a temporary failure in one data source does not hide records from the others.
 
+
+## Scan reliability
+
+See [SCAN_WORKFLOW.md](SCAN_WORKFLOW.md) for mandatory staging, write, read-back, browser verification, retry and audit steps. Run `node tools/data-tests.mjs` alongside the static smoke check. Keep `data-utils.js` with the three HTML/CSS assets when deploying.
